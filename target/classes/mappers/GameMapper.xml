@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jafa.repository.GameRepository">
+
+	<resultMap type="category" id="cateMap">
+		<result property="cid" column="cid"/>
+		<result property="cname" column="cname"/>
+	</resultMap>
+	
+	<sql id="condition">
+  		<trim prefix="and">
+			<choose>
+				<when test="type == 'T'.toString()"> 
+					title like '%'||#{keyword}||'%'
+				</when>
+				<when test="type == 'C'.toString()">
+					content like '%'||#{keyword}||'%'
+				</when>
+				<when test="type == 'W'.toString()">
+					writer like '%'||#{keyword}||'%'
+				</when>
+			</choose>
+		</trim>
+		<if test="category != null and category.cid != null and category.cid != ''">
+			and b.cid = #{category.cid}
+		</if>
+  	</sql>
+
+	<select id="getTotalCount" resultType="int">
+		select count(*) from board_file_game b
+		<where>
+			<include refid="condition" />
+		</where>
+	</select>
+
+
+	<resultMap type="gameVO" id="gameMap">
+  		<result property="gno" column="gno" />
+  		<result property="title" column="title" />
+  		<result property="content" column="content" />
+  		<result property="price" column="price" />
+  		<result property="volSize" column="volSize" />
+  		<result property="developer" column="developer" />
+  		<result property="fileName" column="fileName" />
+  		<result property="fileType" column="fileType" />
+  		<collection property="category" resultMap="cateMap" />
+  	</resultMap>
+	 
+	 <!-- 리스트 -->
+	<select id="list" resultMap="gameMap">
+	    <![CDATA[
+	    SELECT 
+	        rn, gno, title, content, price, volSize, developer, fileName, fileType,
+		   	cid, cname
+	    FROM 
+	    (
+	        SELECT 
+	            /*+ index_asc(board_file_game gno) */
+		      rownum rn, b.gno, b.title, b.content, b.price, b.volSize, b.developer, b.fileName, b.fileType,
+		      c.cid, c.cname     
+	        FROM 
+	        board_file_game b
+	        INNER JOIN category_board c 
+	        ON c.cid = b.cid
+	        WHERE rownum <= #{maxRow}
+	        ]]>
+	        	<include refid="condition" />
+	        )
+	        <![CDATA[
+	    WHERE rn > #{minRow}
+	    ]]>
+	</select>  
+	
+	<select id="getCateList" resultMap="cateMap">
+		select * from category_board
+	</select>
+
+	<!-- <select id="list" resultType="gameVO">
+	  select * from board_file_game
+	</select> -->
+	
+	<select id="detail" resultType="gameVO">
+		select * from board_file_game where gno=#{gno}
+	</select>
+	
+	<insert id="write" useGeneratedKeys="true" keyColumn="gno" keyProperty="gno">
+		insert into board_file_game(gno, cid, title, content, price,volSize,developer, fileName, fileType)
+		values(gno_file01_game_seq.nextval,#{category.cid}, #{title}, #{content}, #{price}, #{volSize}, #{developer}, 
+		#{fileName, jdbcType=VARCHAR}, #{fileType, jdbcType=VARCHAR}) 
+	</insert>
+
+	<delete id="remove" parameterType="Long">
+		delete from board_file_game where gno=#{gno} 
+	</delete>
+	
+	<update id="modify">
+		update board_file_game
+		set
+			title=#{title},
+			content=#{content},
+			price=#{price},
+			volSize=#{volSize},
+			developer=#{developer},
+			fileType=#{fileType, jdbcType=VARCHAR},
+			fileName=#{fileName, jdbcType=VARCHAR}
+		where gno=#{gno}
+	</update>
+
+	<update id="modifyOnlyContent">
+		update board_file_game
+		set
+			title=#{title},
+			content=#{content},
+			price=#{price},
+			price=#{volSize},
+			price=#{developer}
+		where gno=#{gno}
+	</update>
+	
+	<!-- 카테고리 -->
+	<insert id="createCategory">
+		insert into category_board(cid, cname) values(#{cid}, #{cname})
+	</insert>
+	
+	<update id="updateCategory">
+		update category_board set cname=#{cname} where cid=#{cid}
+	</update>
+	
+	<delete id="deleteCategory" parameterType="String">
+		delete from category_board where cid=#{cid}
+	</delete>
+	
+</mapper>
